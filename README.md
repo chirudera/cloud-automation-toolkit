@@ -1,7 +1,7 @@
 # cloud-automation-toolkit
 Cloud Automation Scripts
 
-Cloud Automation Toolkit has scripts for Auto Scaling and On-Demand Scaling of Cloudera clusters on Cloud. The progress can be tracked the Cloudera Director UI.
+Cloud Automation Toolkit has scripts for Auto Scaling and On-Demand Scaling of Cloudera clusters on Cloud. The progress can be tracked on the Cloudera Director UI.
 
 About
 
