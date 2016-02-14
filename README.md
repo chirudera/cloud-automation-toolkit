@@ -7,6 +7,24 @@ About
 
 This repository contains the source code of the Cloud Automation Toolkit in Java that interacts with the Director Server API. This can be used to grow and shrink CDH clusters managed by Cloudera Manager on a cloud infrastructure.
 
+This folder contains a a set of classes for auto scaling or on-demand scaling of CDH clusters.
+
+You can run them from an IDE or via Maven like this:
+
+    mvn compile exec:java -Dexec.mainClass="com.cloudera.director.toolkit.GrowOrShrinkCluster" \
+        -Dexec.args="--admin-username admin --admin-password --server \"http://localhost:7189\" --config cluster.ini"
+
+    OR
+
+    mvn compile exec:java -Dexec.mainClass="com.cloudera.director.samples.AutoScaleClusterApp" \
+        -Dexec.args="--admin-username admin --admin-password --server \"http://localhost:7189\" --config cluster.ini"
+        
+    OR 
+    
+    mvn compile exec:java -Dexec.mainClass="com.cloudera.director.samples.DynamicScaleClusterApp" \
+        -Dexec.args="--admin-username admin --admin-password --server \"http://localhost:7189\" --config cluster.ini"
+
+
 Important notice
 
 Copyright © 2015 Cloudera, Inc. Licensed under the Apache License, Version 2.0.
