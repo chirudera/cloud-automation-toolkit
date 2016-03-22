@@ -3,7 +3,7 @@ Cloud Automation Scripts
 
 Cloud Automation Toolkit has scripts for Auto Scaling and On-Demand Scaling of Cloudera clusters on Cloud. The progress can be tracked on the Cloudera Director UI.
 
-About
+About-
 
 This repository contains the source code of the Cloud Automation Toolkit in Java that interacts with the Director Server API. This can be used to grow and shrink CDH clusters managed by Cloudera Manager on a cloud infrastructure.
 
