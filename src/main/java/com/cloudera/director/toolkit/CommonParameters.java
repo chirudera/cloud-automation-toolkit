@@ -148,6 +148,23 @@ public class CommonParameters {
                 instanceImage = config.get("worker", "image");
                 instanceType = config.get("worker", "type");
                 break;
+            case GATEWAY:
+                configs.put("subnetId", config.get("gateway", "subnetId"));
+                configs.put("securityGroupsIds", config.get("gateway", "securityGroupId"));
+                configs.put("instanceNamePrefix", config.get("gateway", "namePrefix"));
+                instanceImage = config.get("gateway", "image");
+                instanceType = config.get("gateway", "type");
+                break;
+
+            case GATEWAYWITHSPOTINSTANCES:
+                configs.put("subnetId", config.get("gateway", "subnetId"));
+                configs.put("securityGroupsIds", config.get("gateway", "securityGroupId"));
+                configs.put("instanceNamePrefix", config.get("gateway", "namePrefix"));
+                configs.put("useSpotInstances", config.get("gateway", "useSpotInstances"));
+                configs.put("spotBidUSDPerHr", config.get("gateway", "spotBidUSDPerHr"));
+                instanceImage = config.get("gateway", "image");
+                instanceType = config.get("gateway", "type");
+                break;
         }
 
         return InstanceTemplate.builder()

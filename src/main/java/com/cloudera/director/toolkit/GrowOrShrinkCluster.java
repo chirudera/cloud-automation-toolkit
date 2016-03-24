@@ -8,12 +8,14 @@ import com.cloudera.director.client.common.ApiException;
 import com.cloudera.director.client.latest.api.ClustersApi;
 import com.cloudera.director.client.latest.model.*;
 
-import java.util.List;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
 
 import org.apache.log4j.Logger;
 
 import org.ini4j.Ini;
-import java.util.UUID;
+import org.ini4j.Profile;
 
 /**
  * Example on how to use API to grow or shrink an existing cluster.
@@ -31,18 +33,32 @@ public class GrowOrShrinkCluster extends CommonParameters {
                 .build();
     }
 
+    public Map<String,List<String>> getHashMapfromSections(String sectionName) throws IOException {
+
+        Ini ini = new Ini(new FileReader("cluster.ini"));
+        Profile.Section section = ini.get(sectionName);
+        Map<String,List<String>> hMap = new HashMap<String, List<String>>();
+        for (String optionKey : section.keySet()) {
+            List<String> arrayList = Arrays.asList(section.get(optionKey).split("\\s*,\\s*"));
+            hMap.put(optionKey,arrayList);
+        }
+        return hMap;
+    }
+
+
+
     /**
      * Grow or Shrink an existing CDH cluster with data from the configuration file.
      */
     public String modifyCluster(ApiClient client, String environmentName,
-                                String deploymentName, String clusterName, Ini config, int workerSize, int gatewaySize) throws ApiException {
+                                String deploymentName, String clusterName, Ini config, int workerSize, int gatewaySize) throws ApiException, IOException {
         if(workerSize < 3) {
             logger.info("Worker node count cannot be less than 3.");
             return clusterName;
         }
 
-        if(gatewaySize < 1) {
-            logger.info("Gateway node count cannot be less than 1.");
+        if(gatewaySize < 0) {
+            logger.info("Gateway node count cannot be less than 0.");
             return clusterName;
         }
 
@@ -65,7 +81,7 @@ public class GrowOrShrinkCluster extends CommonParameters {
        List<VirtualInstance> workerVirtualInstances = workersGroup.getVirtualInstances();
 
         if(workerVirtualInstances.size() == 0) {
-            logger.info("Number of worker instances if zero");
+            logger.info("Number of worker instances is zero");
             return clusterName;
         }
 
@@ -88,38 +104,72 @@ public class GrowOrShrinkCluster extends CommonParameters {
             }
         }
 
+        //do this only is there is presence of gateway nodes in the cluster
+        if(gatewaySize >= 0){
 
-        VirtualInstanceGroup gatewayGroup = template.getVirtualInstanceGroups().get("gateway");
+            VirtualInstanceGroup gatewayGroup = template.getVirtualInstanceGroups().get("gateway");
 
 
-        List<VirtualInstance> gatewayGroupInstances = gatewayGroup.getVirtualInstances();
+            // If there were no gateway instances in the cluster create them from config
+            if((gatewayGroup == null ||
+                    gatewayGroup.getVirtualInstances() == null ||
+                    gatewayGroup.getVirtualInstances().size() == 0 ||
+                    gatewayGroup.getVirtualInstances().get(0) == null) && gatewaySize > 0) {
+                logger.info("Number of gateway instances is zero, creating new instances of count :"+gatewaySize);
 
-        if(gatewayGroupInstances.size() == 0) {
-            logger.info("Number of gateway instances if zero");
-            return clusterName;
-        }
 
-        if(gatewayGroupInstances.get(0) == null) {
-            logger.info("Gateway Virtual Instances Template is null at index 0");
-            return clusterName;
-        }
+                Map<String, List<String>> gatewayRoles =  getHashMapfromSections("workerRoles");
 
-        if (gatewayGroupInstances.size() > gatewaySize) {
-            int i = gatewayGroupInstances.size()-1;
-            while (gatewayGroupInstances.size() > gatewaySize) {
-                gatewayGroupInstances.remove(i);
-                i--;
+                List<VirtualInstance> gatewayGroupInstances = new ArrayList<VirtualInstance>();
+                String spotInstances = String.valueOf(config.get("gateway", "useSpotInstances"));
+                String templateName = "gateway";
+                int minCount = gatewaySize;
+                if(spotInstances.equals("true")) {
+                    logger.info("Trying for Spot Instances.");
+                    System.out.print("Trying for Spot Instances.");
+                    templateName = "gatewaywithspotinstances";
+                    minCount = 0;
+                }
+
+
+                for (int i = 0; i < gatewaySize; i++) {
+                    gatewayGroupInstances.add(createVirtualInstanceWithRandomId(config, templateName));
+                }
+
+                template.getVirtualInstanceGroups().put("gateway", VirtualInstanceGroup.builder()
+                        .name("gateway")
+                        .minCount(minCount)
+                        .serviceTypeToRoleTypes(gatewayRoles)
+                        .virtualInstances(gatewayGroupInstances)
+                        .build());
+
+
+            } else {
+                logger.info("Number of gateway instances exists, adjusting as needed to size "+ gatewaySize);
+
+                List<VirtualInstance> gatewayGroupInstances = gatewayGroup.getVirtualInstances();
+
+                if (gatewayGroupInstances.size() > gatewaySize) {
+                    int i = gatewayGroupInstances.size() - 1;
+                    while (gatewayGroupInstances.size() > gatewaySize) {
+                        gatewayGroupInstances.remove(i);
+                        i--;
+                    }
+                    //if gateway size is zero remove it from the group.
+                    if(gatewayGroupInstances.size() == 0) {
+                        template.getVirtualInstanceGroups().remove("gateway");
+                    }
+                } else {
+                    VirtualInstance currentVirtualInstance = gatewayGroupInstances.get(0);
+                    while (gatewayGroupInstances.size() < gatewaySize) {
+                        VirtualInstance newVirtualInstance = copyVirtualInstanceWithRandomId(currentVirtualInstance);
+                        gatewayGroupInstances.add(newVirtualInstance);
+                    }
+                }
+
             }
-        } else {
-            VirtualInstance currentVirtualInstance = gatewayGroupInstances.get(0);
-            while(gatewayGroupInstances.size() < gatewaySize) {
-                VirtualInstance newVirtualInstance = copyVirtualInstanceWithRandomId(currentVirtualInstance);
-                gatewayGroupInstances.add(newVirtualInstance);
-            }
+
         }
-
-
-
 
         api.update(environmentName, deploymentName, clusterName, template);
 
