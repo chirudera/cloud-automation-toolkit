@@ -7,25 +7,47 @@ public class ClusterLoadTracker {
 
     private  int clusterGrow;
 
-    private int originalSize;
+    private int originalWorkerSize;
 
-    public int getOriginalSize() {
-        return originalSize;
+    private int originalGatewaySize;
+
+    public int getOriginalWorkerSize() {
+        return originalWorkerSize;
     }
 
-    public void setOriginalSize(int originalSize) {
-        this.originalSize = originalSize;
+    public void setOriginalWorkerSize(int originalWorkerSize) {
+        this.originalWorkerSize = originalWorkerSize;
     }
 
-    public int getCurrentSize() {
-        return currentSize;
+
+
+    public int getCurrentWorkersSize() {
+        return currentWorkersSize;
     }
 
-    public void setCurrentSize(int currentSize) {
-        this.currentSize = currentSize;
+    public void setCurrentWorkersSize(int currentWorkersSize) {
+        this.currentWorkersSize = currentWorkersSize;
     }
 
-    private  int currentSize;
+    private  int currentWorkersSize;
+
+    public int getCurrentGatewaySize() {
+        return currentGatewaySize;
+    }
+
+    public void setCurrentGatewaySize(int currentGatewaySize) {
+        this.currentGatewaySize = currentGatewaySize;
+    }
+
+    public int getOriginalGatewaySize() {
+        return originalGatewaySize;
+    }
+
+    public void setOriginalGatewaySize(int originalGatewaySize) {
+        this.originalGatewaySize = originalGatewaySize;
+    }
+
+    private  int currentGatewaySize;
 
     public int getClusterShrink() {
         return clusterShrink;

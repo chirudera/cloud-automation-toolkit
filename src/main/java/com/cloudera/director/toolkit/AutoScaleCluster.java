@@ -1,15 +1,11 @@
 package com.cloudera.director.toolkit;
 
-import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.cloudera.director.client.common.ApiClient;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 
+import org.apache.log4j.Logger;
 import org.joda.time.*;
-
-import org.ini4j.Ini;
 
 
 /**
@@ -19,6 +15,8 @@ import org.ini4j.Ini;
  */
 @Parameters(commandDescription = "Auto Scale a cluster based on time of the day")
 public class AutoScaleCluster extends CommonParameters {
+
+    final static Logger logger = Logger.getLogger(AutoScaleCluster.class);
 
     /**
      * Go through the steps for growing or shrinking a cluster based on the configuration file.
@@ -36,21 +34,34 @@ public class AutoScaleCluster extends CommonParameters {
         String offPeakTime = config.get("autoscaling", "peakHourEnd");
 
         if(!systemTime.equals(peakTime) && !systemTime.equals(offPeakTime)) {
-            System.out.println("No action taken at this time of the day..." + systemTime);
+            logger.info("No action taken at this time of the day..." + systemTime);
             return -3;
         }
 
-        int clusterSize = Integer.parseInt(config.get("cluster", "size"));
+        int clusterWorkerSize = getCurrentClusterWorkersSize();
 
         if(systemTime.equals(peakTime)) {
-            clusterSize = Integer.parseInt(config.get("autoscaling", "peakSize"));
+            clusterWorkerSize = clusterWorkerSize + Integer.parseInt(config.get("autoscaling", "workersIncrement"));
+        }
+        else if(systemTime.equals(offPeakTime)) {
+            clusterWorkerSize = clusterWorkerSize - Integer.parseInt(config.get("autoscaling", "workersIncrement"));
         }
 
-        System.out.println("Growing or Shrinking an existing CDH cluster...");
-        GrowOrShrinkCluster cluster = new GrowOrShrinkCluster();
-        clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config, clusterSize);
+        int clusterGatewaySize = getCurrentClusterGatewaySize();
 
-        System.out.println("Waiting for the cluster to be ready. Check the web interface for details.");
+        if(systemTime.equals(peakTime)) {
+            clusterGatewaySize = clusterGatewaySize + Integer.parseInt(config.get("autoscaling", "gatewayIncrement"));
+        }
+        else if(systemTime.equals(offPeakTime)) {
+            clusterGatewaySize = clusterGatewaySize - Integer.parseInt(config.get("autoscaling", "gatewayIncrement"));
+        }
+
+
+        logger.info("Autoscaling existing CDH cluster...");
+        GrowOrShrinkCluster cluster = new GrowOrShrinkCluster();
+        clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config, clusterWorkerSize, clusterGatewaySize);
+
+        logger.info("Waiting for the cluster to be ready. Check the web interface for details.");
         waitForCluster(client, environmentName, deploymentName, clusterName);
 
         return 0;

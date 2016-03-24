@@ -9,22 +9,29 @@ import com.cloudera.director.client.common.ApiClient;
 import com.cloudera.director.client.common.ApiException;
 import com.cloudera.director.client.latest.api.AuthenticationApi;
 import com.cloudera.director.client.latest.api.ClustersApi;
-import com.cloudera.director.client.latest.api.EnvironmentsApi;
 import com.cloudera.director.client.latest.model.*;
+import org.apache.log4j.Logger;
 import org.ini4j.Ini;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import com.cloudera.director.client.latest.model.InstanceProviderConfig;
+import com.cloudera.director.client.latest.model.SshCredentials;
+import java.util.Scanner;
 
 /**
  * A common list of parameters for all commands that need to talk
  * with a Cloudera Director Server over the public API
  */
 public class CommonParameters {
+
+    final static Logger logger = Logger.getLogger(CommonParameters.class);
 
     @Parameter(names = "--admin-username",
             description = "Name of an user with administrative access")
@@ -68,6 +75,7 @@ public class CommonParameters {
                 .build();
 
         new AuthenticationApi(client).login(login);
+        logger.info("Logged into Cloudera Director.");
 
         return client;
     }
@@ -77,7 +85,7 @@ public class CommonParameters {
             this.config = new Ini(new File(this.configFile));
 
         } catch (FileNotFoundException e) {
-            System.err.println("Configuration file not found: " + this.configFile);
+            logger.error("Configuration file not found: " + this.configFile);
             throw e;
         }
 
@@ -107,12 +115,40 @@ public class CommonParameters {
 
         Map<String, String> configs = new HashMap<String, String>();
 
-        configs.put("subnetId", config.get("instance", "subnetId"));
-        configs.put("securityGroupsIds", config.get("instance", "securityGroupId"));
-        configs.put("instanceNamePrefix", config.get("instance", "namePrefix"));
+        NodeType currentNode = NodeType.valueOf(templateName.toUpperCase());
 
-        instanceImage = config.get("instance", "image");
-        instanceType = config.get("instance", "type");
+        switch(currentNode) {
+            case MANAGER:
+                configs.put("subnetId", config.get("manager", "subnetId"));
+                configs.put("securityGroupsIds", config.get("manager", "securityGroupId"));
+                configs.put("instanceNamePrefix", config.get("manager", "namePrefix"));
+                instanceImage = config.get("manager", "image");
+                instanceType = config.get("manager", "type");
+                break;
+            case MASTER:
+                configs.put("subnetId", config.get("master", "subnetId"));
+                configs.put("securityGroupsIds", config.get("master", "securityGroupId"));
+                configs.put("instanceNamePrefix", config.get("master", "namePrefix"));
+                instanceImage = config.get("master", "image");
+                instanceType = config.get("master", "type");
+                break;
+            case WORKER:
+                configs.put("subnetId", config.get("worker", "subnetId"));
+                configs.put("securityGroupsIds", config.get("worker", "securityGroupId"));
+                configs.put("instanceNamePrefix", config.get("worker", "namePrefix"));
+                instanceImage = config.get("worker", "image");
+                instanceType = config.get("worker", "type");
+                break;
+            case WORKERWITHSPOTINSTANCES:
+                configs.put("subnetId", config.get("worker", "subnetId"));
+                configs.put("securityGroupsIds", config.get("worker", "securityGroupId"));
+                configs.put("instanceNamePrefix", config.get("worker", "namePrefix"));
+                configs.put("useSpotInstances", config.get("worker", "useSpotInstances"));
+                configs.put("spotBidUSDPerHr", config.get("worker", "spotBidUSDPerHr"));
+                instanceImage = config.get("worker", "image");
+                instanceType = config.get("worker", "type");
+                break;
+        }
 
         return InstanceTemplate.builder()
                 .name(templateName)
@@ -136,11 +172,12 @@ public class CommonParameters {
 
         } while (!readyOrFailed(stage));
 
-        System.out.printf("%nCluster '%s' current stage is '%s'%n", clusterName, stage);
+        logger.info(clusterName + " Cluster " + stage + " current stage is " + stage + " " + clusterName);
     }
 
     protected boolean readyOrFailed(String stage) {
-        return Status.Stage.READY.equals(stage) || Status.Stage.BOOTSTRAP_FAILED.equals(stage);
+        return Status.Stage.READY.equals(stage) || Status.Stage.BOOTSTRAP_FAILED.equals(stage) || Status.Stage
+                .UPDATE_FAILED.equals(stage);
     }
 
     protected void waitAndReportProgress() throws InterruptedException {
@@ -148,5 +185,63 @@ public class CommonParameters {
         System.out.flush();
 
         TimeUnit.SECONDS.sleep(1);
+    }
+
+    protected String readFile(String path) throws FileNotFoundException {
+        Scanner scanner = new Scanner(new File(path), "UTF-8");
+        try {
+            return scanner.useDelimiter("\\Z").next();
+
+        } finally {
+            scanner.close();
+        }
+    }
+
+    protected <T> Map<T, T> newMap(T... pairs) {
+        if (pairs.length % 2 != 0) {
+            throw new IllegalArgumentException("This function expects an even number of arguments");
+        }
+        Map<T, T> result = new HashMap<T, T>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            result.put(pairs[i], pairs[i + 1]);
+        }
+        return result;
+    }
+
+    /**
+     * Get worker node count of the existing cluster.
+     */
+    protected int getCurrentClusterWorkersSize() throws Exception {
+
+        ApiClient client = newAuthenticatedApiClient(this);
+        loadClusterConfigs(client);
+
+        ClustersApi api = new ClustersApi(client);
+        ClusterTemplate template = api.getTemplateRedacted(environmentName, deploymentName, clusterName);
+
+        VirtualInstanceGroup workersGroup = template.getVirtualInstanceGroups().get("workers");
+
+        List<VirtualInstance> workerVirtualInstances = workersGroup.getVirtualInstances();
+
+        return workerVirtualInstances.size();
+    }
+
+
+    /**
+     * Get worker node count of the existing cluster.
+     */
+    protected int getCurrentClusterGatewaySize() throws Exception {
+
+        ApiClient client = newAuthenticatedApiClient(this);
+        loadClusterConfigs(client);
+
+        ClustersApi api = new ClustersApi(client);
+        ClusterTemplate template = api.getTemplateRedacted(environmentName, deploymentName, clusterName);
+
+        VirtualInstanceGroup workersGroup = template.getVirtualInstanceGroups().get("gateway");
+
+        List<VirtualInstance> workerVirtualInstances = workersGroup.getVirtualInstances();
+
+        return workerVirtualInstances.size();
     }
 }

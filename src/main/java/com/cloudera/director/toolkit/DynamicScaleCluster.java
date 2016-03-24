@@ -3,24 +3,17 @@ package com.cloudera.director.toolkit;
 import com.beust.jcommander.Parameters;
 import com.cloudera.director.client.common.ApiClient;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 
-import com.cloudera.director.client.latest.api.ClustersApi;
-import com.cloudera.director.client.latest.model.ClusterTemplate;
-import com.cloudera.director.client.latest.model.VirtualInstance;
-import com.cloudera.director.client.latest.model.VirtualInstanceGroup;
+import org.apache.log4j.Logger;
 import org.joda.time.*;
 import org.joda.time.format.*;
 
-import org.ini4j.Ini;
 import com.cloudera.api.*;
 import com.cloudera.api.v10.*;
 import com.cloudera.api.model.*;
 import com.cloudera.api.v6.*;
 
 import java.util.Calendar;
-import java.util.List;
 
 /**
  * Example on how to use the Cloudera Director API to dynamically scale a cluster based on the workload.
@@ -30,6 +23,8 @@ import java.util.List;
  */
 @Parameters(commandDescription = "Auto Scale a cluster based on workload")
 public class DynamicScaleCluster extends CommonParameters {
+
+    final static Logger logger = Logger.getLogger(DynamicScaleCluster.class);
 
     /**
      * Go through the steps for growing or shrinking a cluster based on the configuration file.
@@ -58,8 +53,12 @@ public class DynamicScaleCluster extends CommonParameters {
 
         ApiTimeSeriesResponseList response = tsResource.queryTimeSeries(query, startPeriod, endPeriod);
 
-        double excessLoad = 0.00;
-        Integer clusterSize =  ClusterLoadTracker.getInstance().getCurrentSize();
+        double excessWorkersLoad = 0.00;
+        double excessGatewayLoad = 0.00;
+
+        int clusterWorkersSize =  ClusterLoadTracker.getInstance().getCurrentWorkersSize();
+        int clusterGatewaySize =  ClusterLoadTracker.getInstance().getCurrentGatewaySize();
+
 
         if(response.getResponses().size() > 0) {
 
@@ -69,21 +68,29 @@ public class DynamicScaleCluster extends CommonParameters {
             if(clusterLoadAvg < 1)
                 clusterLoadAvg = 1;
 
-            excessLoad = 100 - (((Integer.parseInt(config.get("dynamic-scaling", "num_cores_per_node")) * clusterSize)
+            excessWorkersLoad = 100 - (((Integer.parseInt(config.get("dynamic-scaling", "num_cores_per_node")) * clusterWorkersSize)
                     /clusterLoadAvg) * 100);
+            excessGatewayLoad = 100 - (((Integer.parseInt(config.get("dynamic-scaling", "num_cores_per_node")) * clusterGatewaySize)
+                    /clusterLoadAvg) * 100);
+            logger.info("clusterLoadAvg: " + clusterLoadAvg);
+            logger.info("Excess Workers Load: " + excessWorkersLoad);
+            logger.info("Excess Gateway Load: " + excessGatewayLoad);
         }
         else {
+            logger.info("No response from Cloudera Manager");
             return 0;
         }
 
         double loadAvgThreshold = Double.parseDouble(config.get("dynamic-scaling", "loadAvgThreshold"));
 
 
-        int increment = Integer.parseInt(config.get("dynamic-scaling", "increment"));
+        int workersIncrement = Integer.parseInt(config.get("dynamic-scaling", "workersIncrement"));
+        int gatewayIncrement = Integer.parseInt(config.get("dynamic-scaling", "gatewayIncrement"));
+
         int grow = ClusterLoadTracker.getInstance().getClusterGrow();
         int shrink = ClusterLoadTracker.getInstance().getClusterShrink();
 
-        if(excessLoad > loadAvgThreshold) {
+        if(excessWorkersLoad > loadAvgThreshold || excessGatewayLoad > loadAvgThreshold) {
             grow++;
             shrink=0;
         }
@@ -96,45 +103,32 @@ public class DynamicScaleCluster extends CommonParameters {
         ClusterLoadTracker.getInstance().setClusterShrink(shrink);
 
         if(grow == 3) {
-            clusterSize = clusterSize + increment;
+            clusterWorkersSize = clusterWorkersSize + workersIncrement;
+            clusterGatewaySize = clusterGatewaySize + gatewayIncrement;
             ClusterLoadTracker.getInstance().setClusterGrow(0);
         }
         else if(shrink == 12) {
-            clusterSize = clusterSize - increment;
+            clusterWorkersSize = clusterWorkersSize - workersIncrement;
+            clusterGatewaySize = clusterGatewaySize - gatewayIncrement;
             ClusterLoadTracker.getInstance().setClusterShrink(0);
         }
-        else
+        else {
+            logger.info("No action taken at this time.");
             return 0;
+        }
 
-       if(clusterSize < ClusterLoadTracker.getInstance().getOriginalSize())
+       if(clusterWorkersSize < ClusterLoadTracker.getInstance().getOriginalWorkerSize())
             return 0;
 
         GrowOrShrinkCluster cluster = new GrowOrShrinkCluster();
+        logger.info("DynamicScaling existing CDH cluster...");
         clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config,
-                    clusterSize);
-
+                clusterWorkersSize,clusterGatewaySize);
+        logger.info("Waiting for the cluster to be ready. Check the web interface for details.");
         waitForCluster(client, environmentName, deploymentName, clusterName);
-        ClusterLoadTracker.getInstance().setCurrentSize(clusterSize);
+        ClusterLoadTracker.getInstance().setCurrentWorkersSize(clusterWorkersSize);
+        ClusterLoadTracker.getInstance().setCurrentGatewaySize(clusterGatewaySize);
 
         return 0;
     }
-
-    /**
-     * Get worker node count of the existing cluster.
-     */
-    public int getClusterSize() throws Exception {
-
-        ApiClient client = newAuthenticatedApiClient(this);
-        loadClusterConfigs(client);
-
-        ClustersApi api = new ClustersApi(client);
-        ClusterTemplate template = api.getTemplateRedacted(environmentName, deploymentName, clusterName);
-
-        VirtualInstanceGroup workersGroup = template.getVirtualInstanceGroups().get("workers");
-
-        List<VirtualInstance> workerVirtualInstances = workersGroup.getVirtualInstances();
-
-        return workerVirtualInstances.size();
-    }
-
 }

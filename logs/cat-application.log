@@ -1,0 +1,23 @@
+2016-03-23 12:52:34 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 12:53:13 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 12:53:50 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 12:53:50 INFO  GrowOrShrinkCluster:101 - Growing or Shrinking an existing CDH cluster...
+2016-03-23 12:53:56 INFO  GrowOrShrinkCluster:104 - Waiting for the cluster to be ready. Check the web interface for details.
+2016-03-23 13:34:57 INFO  CommonParameters:175 - Cluster With Implas Cluster READY current stage is READY Cluster With Implas
+2016-03-23 14:24:30 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 14:24:30 INFO  GrowOrShrinkCluster:145 - Growing or Shrinking an existing CDH cluster...
+2016-03-23 14:24:35 INFO  GrowOrShrinkCluster:148 - Waiting for the cluster to be ready. Check the web interface for details.
+2016-03-23 14:58:36 INFO  CommonParameters:175 - Cluster With Implas Cluster READY current stage is READY Cluster With Implas
+2016-03-23 15:01:12 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 15:01:12 INFO  GrowOrShrinkCluster:145 - Growing or Shrinking an existing CDH cluster...
+2016-03-23 15:01:18 INFO  GrowOrShrinkCluster:148 - Waiting for the cluster to be ready. Check the web interface for details.
+2016-03-23 15:02:25 INFO  CommonParameters:175 - Cluster With Implas Cluster READY current stage is READY Cluster With Implas
+2016-03-23 21:43:31 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 21:43:31 INFO  GrowOrShrinkCluster:145 - Growing or Shrinking an existing CDH cluster...
+2016-03-23 21:43:31 INFO  GrowOrShrinkCluster:40 - Worker node count cannot be less than 3.
+2016-03-23 21:43:31 INFO  GrowOrShrinkCluster:148 - Waiting for the cluster to be ready. Check the web interface for details.
+2016-03-23 21:43:32 INFO  CommonParameters:175 - Cluster With Implas Cluster READY current stage is READY Cluster With Implas
+2016-03-23 21:44:28 INFO  CommonParameters:78 - Logged into Cloudera Director.
+2016-03-23 21:44:28 INFO  GrowOrShrinkCluster:145 - Growing or Shrinking an existing CDH cluster...
+2016-03-23 21:44:33 INFO  GrowOrShrinkCluster:148 - Waiting for the cluster to be ready. Check the web interface for details.
+2016-03-23 21:47:10 INFO  CommonParameters:175 - Cluster With Implas Cluster READY current stage is READY Cluster With Implas

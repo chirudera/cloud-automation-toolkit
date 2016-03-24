@@ -2,7 +2,7 @@ package com.cloudera.director.toolkit;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
-import com.cloudera.director.client.common.ApiClient;
+import org.apache.log4j.Logger;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -11,11 +11,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * Runs as a scheduled service every 5 minutes.
  */
-public class DynamicScaleClusterApp {
+public class DynamicScaleClusterApp extends CommonParameters {
 
     public static void main(String[] args) throws Exception {
 
         final String[]  arguments = args;
+        final Logger logger = Logger.getLogger(DynamicScaleClusterApp.class);
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(3);
 
         executor.scheduleAtFixedRate(new Runnable() {
@@ -33,17 +34,24 @@ public class DynamicScaleClusterApp {
                         jc.usage();
                         System.exit(-1);
                     }
-                    int currentSize = cluster.getClusterSize();
-                    if(ClusterLoadTracker.getInstance().getOriginalSize() == 0) {
-                        ClusterLoadTracker.getInstance().setOriginalSize(currentSize);
+                    int currentClusterWorkersSizeSize = cluster.getCurrentClusterWorkersSize();
+                    if(ClusterLoadTracker.getInstance().getOriginalWorkerSize() == 0) {
+                        ClusterLoadTracker.getInstance().setOriginalWorkerSize(currentClusterWorkersSizeSize);
                     }
-                    ClusterLoadTracker.getInstance().setCurrentSize(currentSize);
+                    ClusterLoadTracker.getInstance().setCurrentWorkersSize(currentClusterWorkersSizeSize);
+
+                    int currentClusterGatewaySizeSize = cluster.getCurrentClusterGatewaySize();
+                    if(ClusterLoadTracker.getInstance().getOriginalGatewaySize() == 0) {
+                        ClusterLoadTracker.getInstance().setOriginalGatewaySize(currentClusterGatewaySizeSize);
+                    }
+                    ClusterLoadTracker.getInstance().setCurrentGatewaySize(currentClusterGatewaySizeSize);
+
                     cluster.start();
-                } catch (Exception ex) {
-                    ex.printStackTrace(); //or loggger would be better
+                } catch (Exception e) {
+                    logger.error("ERROR: ", e);
                 }
             }
-        }, 0, 5, TimeUnit.MINUTES);
+        }, 0, 1, TimeUnit.MINUTES);
 
     }
 
