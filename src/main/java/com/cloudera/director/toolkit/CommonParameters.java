@@ -21,8 +21,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import com.cloudera.director.client.latest.model.InstanceProviderConfig;
-import com.cloudera.director.client.latest.model.SshCredentials;
 import java.util.Scanner;
 
 /**
@@ -227,8 +225,9 @@ public class CommonParameters {
 
     /**
      * Get worker node count of the existing cluster.
+     * @param groupName
      */
-    protected int getCurrentClusterWorkersSize() throws Exception {
+    protected int getCurrentClusterGroupSize(String groupName) throws Exception {
 
         ApiClient client = newAuthenticatedApiClient(this);
         loadClusterConfigs(client);
@@ -236,7 +235,7 @@ public class CommonParameters {
         ClustersApi api = new ClustersApi(client);
         ClusterTemplate template = api.getTemplateRedacted(environmentName, deploymentName, clusterName);
 
-        VirtualInstanceGroup workersGroup = template.getVirtualInstanceGroups().get("workers");
+        VirtualInstanceGroup workersGroup = template.getVirtualInstanceGroups().get(groupName);
 
         List<VirtualInstance> workerVirtualInstances = workersGroup.getVirtualInstances();
 
@@ -244,10 +243,14 @@ public class CommonParameters {
     }
 
 
+
+
+
+
     /**
      * Get worker node count of the existing cluster.
      */
-    protected int getCurrentClusterGatewaySize() throws Exception {
+    protected int getCurrentClusterCustomTypeSize(String customType) throws Exception {
 
         ApiClient client = newAuthenticatedApiClient(this);
         loadClusterConfigs(client);
@@ -255,10 +258,10 @@ public class CommonParameters {
         ClustersApi api = new ClustersApi(client);
         ClusterTemplate template = api.getTemplateRedacted(environmentName, deploymentName, clusterName);
 
-        VirtualInstanceGroup workersGroup = template.getVirtualInstanceGroups().get("gateway");
+        VirtualInstanceGroup customGroup = template.getVirtualInstanceGroups().get(customType);
 
-        List<VirtualInstance> workerVirtualInstances = workersGroup.getVirtualInstances();
+        List<VirtualInstance> customVirtualInstances = customGroup.getVirtualInstances();
 
-        return workerVirtualInstances.size();
+        return customVirtualInstances.size();
     }
 }

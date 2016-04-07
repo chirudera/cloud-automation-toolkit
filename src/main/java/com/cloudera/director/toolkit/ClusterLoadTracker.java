@@ -6,48 +6,25 @@ package com.cloudera.director.toolkit;
 public class ClusterLoadTracker {
 
     private  int clusterGrow;
+    private int originalGroupSize;
+    private  int clusterShrink;
+    private  int currenGroupSize;
 
-    private int originalWorkerSize;
 
-    private int originalGatewaySize;
-
-    public int getOriginalWorkerSize() {
-        return originalWorkerSize;
+    public int getOriginalGroupSize() {
+        return originalGroupSize;
     }
 
-    public void setOriginalWorkerSize(int originalWorkerSize) {
-        this.originalWorkerSize = originalWorkerSize;
+    public void setOriginalGroupSize(int originalGroupSize) {
+        this.originalGroupSize = originalGroupSize;
+    }
+    public int getCurrenGroupSize() {
+        return currenGroupSize;
     }
 
-
-
-    public int getCurrentWorkersSize() {
-        return currentWorkersSize;
+    public void setCurrenGroupSize(int currenGroupSize) {
+        this.currenGroupSize = currenGroupSize;
     }
-
-    public void setCurrentWorkersSize(int currentWorkersSize) {
-        this.currentWorkersSize = currentWorkersSize;
-    }
-
-    private  int currentWorkersSize;
-
-    public int getCurrentGatewaySize() {
-        return currentGatewaySize;
-    }
-
-    public void setCurrentGatewaySize(int currentGatewaySize) {
-        this.currentGatewaySize = currentGatewaySize;
-    }
-
-    public int getOriginalGatewaySize() {
-        return originalGatewaySize;
-    }
-
-    public void setOriginalGatewaySize(int originalGatewaySize) {
-        this.originalGatewaySize = originalGatewaySize;
-    }
-
-    private  int currentGatewaySize;
 
     public int getClusterShrink() {
         return clusterShrink;
@@ -65,7 +42,6 @@ public class ClusterLoadTracker {
         this.clusterGrow = clusterGrow;
     }
 
-    private  int clusterShrink;
 
     /* A private Constructor prevents any other
      * class from instantiating.

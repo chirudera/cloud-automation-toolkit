@@ -38,7 +38,7 @@ public class AutoScaleCluster extends CommonParameters {
             return -3;
         }
 
-        int clusterWorkerSize = getCurrentClusterWorkersSize();
+        int clusterWorkerSize = getCurrentClusterGroupSize("workers");
 
         if(systemTime.equals(peakTime)) {
             clusterWorkerSize = clusterWorkerSize + Integer.parseInt(config.get("autoscaling", "workersIncrement"));
@@ -47,7 +47,7 @@ public class AutoScaleCluster extends CommonParameters {
             clusterWorkerSize = clusterWorkerSize - Integer.parseInt(config.get("autoscaling", "workersIncrement"));
         }
 
-        int clusterGatewaySize = getCurrentClusterGatewaySize();
+        int clusterGatewaySize = getCurrentClusterGroupSize("gateway");
 
         if(systemTime.equals(peakTime)) {
             clusterGatewaySize = clusterGatewaySize + Integer.parseInt(config.get("autoscaling", "gatewayIncrement"));
@@ -59,7 +59,7 @@ public class AutoScaleCluster extends CommonParameters {
 
         logger.info("Autoscaling existing CDH cluster...");
         GrowOrShrinkCluster cluster = new GrowOrShrinkCluster();
-        clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config, clusterWorkerSize, clusterGatewaySize);
+        clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config, false, clusterWorkerSize, "gateway", clusterGatewaySize);
 
         logger.info("Waiting for the cluster to be ready. Check the web interface for details.");
         waitForCluster(client, environmentName, deploymentName, clusterName);

@@ -54,27 +54,24 @@ public class DynamicScaleCluster extends CommonParameters {
         ApiTimeSeriesResponseList response = tsResource.queryTimeSeries(query, startPeriod, endPeriod);
 
         double excessWorkersLoad = 0.00;
-        double excessGatewayLoad = 0.00;
 
-        int clusterWorkersSize =  ClusterLoadTracker.getInstance().getCurrentWorkersSize();
-        int clusterGatewaySize =  ClusterLoadTracker.getInstance().getCurrentGatewaySize();
+        int clusterWorkersSize =  ClusterLoadTracker.getInstance().getCurrenGroupSize();
 
 
         if(response.getResponses().size() > 0) {
 
-            double clusterLoadAvg = response.getResponses().get(0).getTimeSeries().get(0).getData().get(0)
+            double clusterLoadAvg = Math.ceil(response.getResponses().get(0).getTimeSeries().get(0).getData().get(0)
                     .getAggregateStatistics()
-                    .getMax();
-            if(clusterLoadAvg < 1)
+                    .getMax());
+            excessWorkersLoad = clusterLoadAvg;
+
+            logger.info("Response from Cloudera Manager with maximum laod in last min (load_1_across_hosts) :" +clusterLoadAvg);
+            if(clusterLoadAvg < 0.01)
                 clusterLoadAvg = 1;
 
-            excessWorkersLoad = 100 - (((Integer.parseInt(config.get("dynamic-scaling", "num_cores_per_node")) * clusterWorkersSize)
-                    /clusterLoadAvg) * 100);
-            excessGatewayLoad = 100 - (((Integer.parseInt(config.get("dynamic-scaling", "num_cores_per_node")) * clusterGatewaySize)
-                    /clusterLoadAvg) * 100);
+            excessWorkersLoad = 100 - (((Integer.parseInt(config.get("dynamic-scaling", "num_cores_per_node")) * clusterWorkersSize) /clusterLoadAvg) * 100);
             logger.info("clusterLoadAvg: " + clusterLoadAvg);
             logger.info("Excess Workers Load: " + excessWorkersLoad);
-            logger.info("Excess Gateway Load: " + excessGatewayLoad);
         }
         else {
             logger.info("No response from Cloudera Manager");
@@ -84,13 +81,12 @@ public class DynamicScaleCluster extends CommonParameters {
         double loadAvgThreshold = Double.parseDouble(config.get("dynamic-scaling", "loadAvgThreshold"));
 
 
-        int workersIncrement = Integer.parseInt(config.get("dynamic-scaling", "workersIncrement"));
-        int gatewayIncrement = Integer.parseInt(config.get("dynamic-scaling", "gatewayIncrement"));
+        int workersIncrement = Integer.parseInt(config.get("dynamic-scaling", "gatewayIncrement"));
 
         int grow = ClusterLoadTracker.getInstance().getClusterGrow();
         int shrink = ClusterLoadTracker.getInstance().getClusterShrink();
 
-        if(excessWorkersLoad > loadAvgThreshold || excessGatewayLoad > loadAvgThreshold) {
+        if(excessWorkersLoad >= loadAvgThreshold ) {
             grow++;
             shrink=0;
         }
@@ -100,16 +96,13 @@ public class DynamicScaleCluster extends CommonParameters {
         }
 
         ClusterLoadTracker.getInstance().setClusterGrow(grow);
-        ClusterLoadTracker.getInstance().setClusterShrink(shrink);
 
         if(grow == 3) {
             clusterWorkersSize = clusterWorkersSize + workersIncrement;
-            clusterGatewaySize = clusterGatewaySize + gatewayIncrement;
             ClusterLoadTracker.getInstance().setClusterGrow(0);
         }
         else if(shrink == 12) {
             clusterWorkersSize = clusterWorkersSize - workersIncrement;
-            clusterGatewaySize = clusterGatewaySize - gatewayIncrement;
             ClusterLoadTracker.getInstance().setClusterShrink(0);
         }
         else {
@@ -117,17 +110,15 @@ public class DynamicScaleCluster extends CommonParameters {
             return 0;
         }
 
-       if(clusterWorkersSize < ClusterLoadTracker.getInstance().getOriginalWorkerSize())
+       if(clusterWorkersSize < ClusterLoadTracker.getInstance().getOriginalGroupSize())
             return 0;
 
         GrowOrShrinkCluster cluster = new GrowOrShrinkCluster();
         logger.info("DynamicScaling existing CDH cluster...");
-        clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config,
-                clusterWorkersSize,clusterGatewaySize);
+        clusterName = cluster.modifyCluster(client, environmentName, deploymentName, clusterName, config, false, 0, "gateway", clusterWorkersSize);
         logger.info("Waiting for the cluster to be ready. Check the web interface for details.");
         waitForCluster(client, environmentName, deploymentName, clusterName);
-        ClusterLoadTracker.getInstance().setCurrentWorkersSize(clusterWorkersSize);
-        ClusterLoadTracker.getInstance().setCurrentGatewaySize(clusterGatewaySize);
+        ClusterLoadTracker.getInstance().setCurrenGroupSize(clusterWorkersSize);
 
         return 0;
     }

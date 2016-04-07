@@ -34,17 +34,14 @@ public class DynamicScaleClusterApp extends CommonParameters {
                         jc.usage();
                         System.exit(-1);
                     }
-                    int currentClusterWorkersSizeSize = cluster.getCurrentClusterWorkersSize();
-                    if(ClusterLoadTracker.getInstance().getOriginalWorkerSize() == 0) {
-                        ClusterLoadTracker.getInstance().setOriginalWorkerSize(currentClusterWorkersSizeSize);
+                    //set group that needs to be autoscaled
+                    int currentClusterGroupSizeSize = cluster.getCurrentClusterGroupSize("gateway");
+                    if(ClusterLoadTracker.getInstance().getOriginalGroupSize() == 0) {
+                        ClusterLoadTracker.getInstance().setOriginalGroupSize(currentClusterGroupSizeSize);
                     }
-                    ClusterLoadTracker.getInstance().setCurrentWorkersSize(currentClusterWorkersSizeSize);
+                    ClusterLoadTracker.getInstance().setCurrenGroupSize(currentClusterGroupSizeSize);
 
-                    int currentClusterGatewaySizeSize = cluster.getCurrentClusterGatewaySize();
-                    if(ClusterLoadTracker.getInstance().getOriginalGatewaySize() == 0) {
-                        ClusterLoadTracker.getInstance().setOriginalGatewaySize(currentClusterGatewaySizeSize);
-                    }
-                    ClusterLoadTracker.getInstance().setCurrentGatewaySize(currentClusterGatewaySizeSize);
+
 
                     cluster.start();
                 } catch (Exception e) {
